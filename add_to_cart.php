@@ -6,7 +6,7 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
 }
-
+//add to cart
 $user_id = $_SESSION['user_id']; // Get the logged-in user's ID
 
 // Include the database configuration
