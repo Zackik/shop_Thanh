@@ -10,26 +10,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
 // Fetch user information from the database
 include 'db_config.php';
-// Mark notifications as read
-if (isset($_GET['read'])) {
-
-    $conn->query("
-        UPDATE notifications
-        SET is_read = 1
-        WHERE is_read = 0
-    ");
-}
-
-// Đếm thông báo chưa đọc
-$count = $conn->query("
-SELECT COUNT(*) AS total
-FROM notifications
-WHERE is_read = 0
-");
-
-$unread = $count->fetch_assoc()['total'];
-
-//
 $user_id = $_SESSION['user_id'];
 $stmt = $conn->prepare("SELECT full_name, email FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
@@ -54,15 +34,6 @@ if (isset($_GET['delete_id'])) {
     }
     $stmt->close();
 }
-//Handle edit product
-$editProduct = null;
-if (isset($_GET['edit_id'])) {
-    $edit_id = intval($_GET['edit_id']);
-    $stmt = $conn->prepare('SELECT * FROM products WHERE id=?');
-    $stmt->bind_param('i', $edit_id);
-    $stmt->execute();
-    $editProduct = $stmt->get_result()->fetch_assoc();
-}
 
 // Handle product upload form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['upload_product'])) {
@@ -70,12 +41,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['upload_product'])) {
     $price = htmlspecialchars($_POST['price']);
     $description = htmlspecialchars($_POST['description']);
     $stock = intval($_POST['stock']);
-
+    
     // Handle image upload
     if (!empty($_FILES['image']['name'])) {
         $target_dir = "product_images/";
         $target_file = $target_dir . basename($_FILES["image"]["name"]);
-
+        
         // Check if file is a valid image
         $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
         $allowedTypes = ['jpg', 'jpeg', 'png', 'gif'];
@@ -97,41 +68,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['upload_product'])) {
         } else {
             echo "<script>alert('Invalid image file type.');</script>";
         }
-    }
-}
-// Handle Update Product
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_product'])) {
-
-    $id = intval($_POST['id']);
-    $name = $_POST['product_name'];
-    $description = $_POST['description'];
-    $price = $_POST['price'];
-    $stock = $_POST['stock'];
-
-    $stmt = $conn->prepare("
-        UPDATE products
-        SET
-            name=?,
-            description=?,
-            price=?,
-            stock=?
-        WHERE id=?
-    ");
-
-    $stmt->bind_param(
-        "ssdii",
-        $name,
-        $description,
-        $price,
-        $stock,
-        $id
-    );
-
-    if ($stmt->execute()) {
-
-        echo "<script>alert('Product updated successfully');</script>";
-
-        header("Refresh:0");
     }
 }
 ?>
@@ -167,26 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_product'])) {
             <ul class="flex gap-6">
                 <li><a href="admin_dashboard.php" class="text-gray-700 hover:text-indigo-600">Admin Home</a></li>
                 <li><a href="view_orders.php" class="text-gray-700 hover:text-indigo-600">View Orders</a></li>
-                <li>
-
-                    <a href="#notifications">
-
-                        🔔 Notifications
-
-                        <?php if ($unread > 0) { ?>
-
-                            <span class="bg-red-600 text-white px-2 rounded-full">
-
-                                <?= $unread ?>
-
-                            </span>
-
-                        <?php } ?>
-
-                    </a>
-
-                </li>
-
+                
             </ul>
         </div>
         <div>
@@ -199,65 +116,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_product'])) {
         <h1 class="text-3xl font-semibold text-center mb-6">Welcome, Admin <?php echo htmlspecialchars($user['full_name'], ENT_QUOTES); ?>!</h1>
         <p class="text-center mb-6">Manage products, view orders, and perform other administrative tasks.</p>
     </div>
-    <!-- THÊM NOTIFICATION TẠI ĐÂY -->
-
-    <div id="notifications"
-        class="container mx-auto p-6 mt-10 bg-white shadow rounded-lg max-w-4xl">
-
-        <h2 class="text-2xl font-bold mb-4">
-
-            Notifications
-
-        </h2>
-
-        <?php
-
-        $result = $conn->query("
-SELECT n.*,u.full_name
-FROM notifications n
-JOIN users u
-ON n.user_id=u.id
-ORDER BY n.created_at DESC
-");
-
-        while ($row = $result->fetch_assoc()) {
-
-        ?>
-
-            <div class="bg-red-100 border-l-4 border-red-600 p-4 mb-3">
-
-                <strong>
-
-                    <?= htmlspecialchars($row['full_name']) ?>
-
-                </strong>
-
-                canceled
-
-                <strong>
-
-                    Order #<?= $row['order_id'] ?>
-
-                </strong>
-
-                <br>
-
-                <small>
-
-                    <?= $row['created_at'] ?>
-
-                </small>
-
-            </div>
-
-        <?php
-
-        }
-
-        ?>
-    </div>
-
-
 
     <!-- Product Upload Section -->
     <div id="products" class="container mx-auto p-6 mt-10 bg-white shadow-md rounded-lg max-w-4xl">
@@ -291,84 +149,6 @@ ORDER BY n.created_at DESC
             <button type="submit" name="upload_product" class="bg-indigo-600 text-white px-6 py-3 rounded-md text-lg hover:bg-indigo-700">Upload Product</button>
         </form>
     </div>
-    <!--Edit form -->
-    <?php if ($editProduct) { ?>
-
-        <div class="container mx-auto p-6 mt-10 bg-yellow-50 shadow rounded-lg max-w-4xl">
-
-            <h2 class="text-2xl font-bold mb-6">
-
-                Edit Product
-
-            </h2>
-
-            <form method="POST">
-
-                <input
-                    type="hidden"
-                    name="id"
-                    value="<?= $editProduct['id'] ?>">
-
-                <div class="mb-4">
-
-                    <label>Name</label>
-
-                    <input
-                        class="w-full border p-3 rounded"
-                        name="product_name"
-                        value="<?= htmlspecialchars($editProduct['name']) ?>">
-
-                </div>
-
-                <div class="mb-4">
-
-                    <label>Description</label>
-
-                    <textarea
-                        class="w-full border p-3 rounded"
-                        name="description"><?= htmlspecialchars($editProduct['description']) ?></textarea>
-
-                </div>
-
-                <div class="mb-4">
-
-                    <label>Price</label>
-
-                    <input
-                        type="number"
-                        step="0.01"
-                        class="w-full border p-3 rounded"
-                        name="price"
-                        value="<?= $editProduct['price'] ?>">
-
-                </div>
-
-                <div class="mb-4">
-
-                    <label>Stock</label>
-
-                    <input
-                        type="number"
-                        class="w-full border p-3 rounded"
-                        name="stock"
-                        value="<?= $editProduct['stock'] ?>">
-
-                </div>
-
-                <button
-                    name="update_product"
-                    class="bg-green-600 text-white px-6 py-3 rounded">
-
-                    Update Product
-
-                </button>
-
-            </form>
-
-        </div>
-
-    <?php } ?>
-
 
     <!-- Manage Products Section -->
     <div id="products" class="container mx-auto p-6 mt-10 bg-white shadow-md rounded-lg max-w-4xl">
@@ -386,13 +166,11 @@ ORDER BY n.created_at DESC
                              <!-- Fixed image size with object-cover to maintain aspect ratio -->
                              <img src="' . $row['image'] . '" alt="' . htmlspecialchars($row['name'], ENT_QUOTES) . '" class="w-full h-48 object-cover">
                             <h3 class="text-lg font-semibold">' . htmlspecialchars($row['name'], ENT_QUOTES) . '</h3>
-                            <p class="text-indigo-600 font-bold">' . number_format($row['price'], 2) . ' USD</p>
-                            <div class="p-3">
+                            <p class="text-indigo-600 font-bold">' . number_format($row['price'], 2) . ' Taka</p>
+                            <div class="p-4">
                                 <!-- Delete button -->
                                 <a href="admin_dashboard.php?delete_id=' . $row['id'] . '" class="bg-red-600 text-white px-6 py-2 rounded-md text-lg hover:bg-red-700">Delete</a>
-                            </div>
-                            <div class="p-3">
-                                <a href="admin_dashboard.php?edit_id=' . $row['id'] . '" class="bg-red-600 text-white px-6 py-2 rounded-md text-lg hover:bg-red-700">Edit</a>
+                                
                             </div>
                         </div>
                     ';

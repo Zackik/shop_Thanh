@@ -31,7 +31,7 @@ if (isset($_SESSION['user_id'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swift Buy 🛒</title>
+    <title>Thanh Buy 🛒</title>
     <link rel="icon" href="favicon.png" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
@@ -49,7 +49,7 @@ if (isset($_SESSION['user_id'])) {
 <body class="bg-gray-100 text-gray-800">
     <!-- Header -->
     <header class="flex justify-between items-center px-6 py-4 bg-white bg-opacity-80 shadow-md">
-        <div class="text-2xl font-bold text-indigo-600">Swift Buy 🛒</div>
+        <div class="text-2xl font-bold text-indigo-600">Thanh Buy 🛒</div>
         <div>
             <button class="bg-indigo-600 text-white px-4 py-2 rounded-md mr-2 hover:bg-indigo-700" onclick="location.href='login.php'">Login</button>
             <button class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700" onclick="location.href='register.php'">Register</button>
@@ -57,9 +57,9 @@ if (isset($_SESSION['user_id'])) {
     </header>
 
     <section class="text-center py-20 bg-cover bg-center text-white" style="background-image: url('banner-tech.jpg');">
-        <h1 class="text-5xl font-bold mb-4">Welcome to Swift Buy 🛒</h1>
+        <h1 class="text-5xl font-bold mb-4">Welcome to Thanh Buy 🛒</h1>
         <p class="text-xl mb-6">Explore cutting-edge gadgets and smart accessories designed for modern living.</p>
-        <button class="bg-indigo-600 text-white px-6 py-3 rounded-md text-lg hover:bg-indigo-700">Shop Now</button>
+        <button class="bg-indigo-600 text-white px-6 py-3 rounded-md text-lg hover:bg-indigo-700" onclick="location.href='login.php'">Shop Now</button>
     </section>
 
     <section class="py-16 bg-gray-50 text-center">
@@ -97,7 +97,7 @@ if (isset($_SESSION['user_id'])) {
                             <img src="  ' . $row['image'] . '" alt="' . $row['name'] . '" class="w-full h-48 object-cover">
                             <div class="p-4">
                                 <h3 class="text-lg font-semibold">' . $row['name'] . '</h3>
-                                <p class="text-indigo-600 font-bold">' . number_format($row['price'], 2) . ' Taka</p>
+                                <p class="text-indigo-600 font-bold">' . number_format($row['price'], 2) . ' USD</p>
                             </div>
                         </div>
                     ';
@@ -114,19 +114,19 @@ if (isset($_SESSION['user_id'])) {
         <div class="flex flex-col md:flex-row justify-center gap-8 px-6">
             <div class="bg-gray-100 p-6 rounded-lg shadow-md max-w-md mx-auto">
                 <p class="text-gray-700 italic mb-4">"Amazing quality and fast delivery. These gadgets made my life easier!"</p>
-                <h4 class="text-indigo-600 font-semibold">Nafisa</h4>
-                <p class="text-sm text-gray-500">Tech Enthusiast</p>
+                <h4 class="text-indigo-600 font-semibold">Thanh bui</h4>
+                <p class="text-sm text-gray-500">Tech big</p>
             </div>
             <div class="bg-gray-100 p-6 rounded-lg shadow-md max-w-md mx-auto">
                 <p class="text-gray-700 italic mb-4">"Highly satisfied with the accessories. Definitely coming back for more!"</p>
-                <h4 class="text-indigo-600 font-semibold">Rashed</h4>
+                <h4 class="text-indigo-600 font-semibold">Thanh bui</h4>
                 <p class="text-sm text-gray-500">Freelancer</p>
             </div>
         </div>
     </section>
 
     <footer class="text-center py-6 bg-gray-200 text-gray-600">
-        <p>&copy; 2025 Swift Buy 🛒 | All Rights Reserved</p>
+        <p>&copy; 2026 Thanh Buy 🛒 | All Rights Reserved</p>
     </footer>
 </body>
 

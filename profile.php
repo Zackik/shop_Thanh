@@ -81,7 +81,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swift Buy 🛒 - Edit Profile</title>
+    <title>Thanh Buy 🛒 - Edit Profile</title>
     <link rel="icon" href="favicon.png" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
@@ -91,7 +91,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <!-- Header -->
     <header class="flex justify-between items-center px-6 py-4 bg-white shadow-md">
         <div class="text-2xl font-bold text-indigo-600">
-            <a href="user_dashboard.php">Swift Buy 🛒</a>
+            <a href="user_dashboard.php">Thanh Buy 🛒</a>
         </div>
         <div>
             <a href="logout.php" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Logout</a>

@@ -43,7 +43,7 @@ if ($order_id > 0) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swift Buy 🛒 - Checkout</title>
+    <title>Thanh Buy 🛒 - Checkout</title>
     <link rel="icon" href="favicon.png" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
@@ -59,7 +59,7 @@ if ($order_id > 0) {
     <!-- Header -->
     <header class="flex justify-between items-center px-6 py-4 bg-white shadow-md">
         <div class="text-2xl font-bold text-indigo-600">
-            <a href="index.php">Swift Buy 🛒</a>
+            <a href="index.php">Thanh Buy 🛒</a>
         </div>
         <div>
             <ul class="flex gap-6">
@@ -84,7 +84,7 @@ if ($order_id > 0) {
         <div class="mb-6">
             <h3 class="text-xl font-semibold mb-4">Order Information</h3>
             <p><strong>Order ID:</strong> <?php echo $order['id']; ?></p>
-            <p><strong>Total:</strong> <?php echo number_format($order['total'], 2); ?> Taka</p>
+            <p><strong>Total:</strong> <?php echo number_format($order['total'], 2); ?> USD</p>
             <p><strong>Status:</strong> <?php echo htmlspecialchars($order['status'], ENT_QUOTES); ?></p>
             <p><strong>Payment Method:</strong> <?php echo htmlspecialchars($order['payment_method'], ENT_QUOTES); ?></p>
             <p><strong>Delivery Address:</strong> <?php echo htmlspecialchars($order['address'], ENT_QUOTES); ?></p>
@@ -96,9 +96,9 @@ if ($order_id > 0) {
             <thead>
                 <tr class="bg-gray-100">
                     <th class="px-4 py-2 text-left">Product Name</th>
-                    <th class="px-4 py-2 text-left">Price (Taka)</th>
+                    <th class="px-4 py-2 text-left">Price (USD)</th>
                     <th class="px-4 py-2 text-left">Quantity</th>
-                    <th class="px-4 py-2 text-left">Total (Taka)</th>
+                    <th class="px-4 py-2 text-left">Total (USD)</th>
                 </tr>
             </thead>
             <tbody>
@@ -127,7 +127,7 @@ if ($order_id > 0) {
     </div>
     
     <footer class="mt-4 text-center py-6 bg-gray-200 text-gray-600">
-        <p>&copy; 2025 Swift Buy 🛒 | All Rights Reserved</p>
+        <p>&copy; 2026 Thanh Buy 🛒 | All Rights Reserved</p>
     </footer>
 </body>
 

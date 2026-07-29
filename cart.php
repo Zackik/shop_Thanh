@@ -151,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Header -->
     <header class="flex justify-between items-center px-6 py-4 bg-white shadow-md">
         <div class="text-2xl font-bold text-indigo-600">
-            <a href="index.php">Swift Buy 🛒</a>
+            <a href="index.php">Thanh Buy 🛒</a>
         </div>
         <div>
             <ul class="flex gap-6">
@@ -177,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <thead>
                     <tr class="bg-gray-100">
                         <th class="px-4 py-2 text-left">Product Name</th>
-                        <th class="px-4 py-2 text-left">Price (Taka)</th>
+                        <th class="px-4 py-2 text-left">Price (USD)</th>
                         <th class="px-4 py-2 text-left">Quantity</th>
                         <th class="px-4 py-2 text-left">Action</th>
                     </tr>
@@ -216,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ?>
                     <tr>
                         <td colspan="3" class="px-4 py-2 text-right font-bold">Total</td>
-                        <td class="px-4 py-2 text-left text-indigo-600 font-bold"><?php echo number_format($total, 2); ?> Taka</td>
+                        <td class="px-4 py-2 text-left text-indigo-600 font-bold"><?php echo number_format($total, 2); ?> USD</td>
                     </tr>
                 </tbody>
             </table>

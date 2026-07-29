@@ -84,45 +84,47 @@ if ($order_months_result->num_rows > 0) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swift Buy 🛒 - Admin Orders</title>
+    <title>Thanh Buy 🛒 - Admin Orders</title>
     <link rel="icon" href="favicon.png" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Chart.js CDN -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-   <style>
-    body {
-        font-family: 'Poppins', sans-serif;
-        background-image: url('banner-tech.jpg');
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
-    }
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-image: url('banner-tech.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
 
-    main {
-        flex-grow: 1;
-    }
+        main {
+            flex-grow: 1;
+        }
 
-    .chart-container {
-        width: 80%;
-        margin: 30px auto;
-        margin-bottom: 40px; /* Adds space between chart and the table */
-    }
-</style>
+        .chart-container {
+            width: 80%;
+            margin: 30px auto;
+            margin-bottom: 40px;
+            /* Adds space between chart and the table */
+        }
+    </style>
 </head>
 
 <body class="bg-gray-100 text-gray-800">
     <!-- Header -->
     <header class="flex justify-between items-center px-6 py-4 bg-white shadow-md">
         <div class="text-2xl font-bold text-indigo-600">
-            <a href="index.php">Swift Buy 🛒</a>
+            <a href="index.php">Thanh Buy 🛒</a>
         </div>
         <div>
             <ul class="flex gap-6">
                 <li><a href="admin_dashboard.php" class="text-gray-700 hover:text-indigo-600">Admin Home</a></li>
                 <li><a href="view_orders.php" class="text-gray-700 hover:text-indigo-600">View Orders</a></li>
+
             </ul>
         </div>
         <div>
@@ -177,7 +179,7 @@ if ($order_months_result->num_rows > 0) {
                                 <tr class="border-b">
                                     <td class="px-6 py-3">' . htmlspecialchars($order['id'], ENT_QUOTES) . '</td>
                                     <td class="px-6 py-3">' . htmlspecialchars($products, ENT_QUOTES) . '</td>
-                                    <td class="px-6 py-3">' . number_format($order['total'], 2) . ' Taka</td>
+                                    <td class="px-6 py-3">' . number_format($order['total'], 2) . ' USD</td>
                                     <td class="px-6 py-3">' . htmlspecialchars($order['address'], ENT_QUOTES) . '</td>
                                     <td class="px-6 py-3">
                                         <form method="POST" action="">
@@ -200,6 +202,35 @@ if ($order_months_result->num_rows > 0) {
                         echo "<tr><td colspan='6' class='text-center py-4'>No orders found!</td></tr>";
                     }
                     ?>
+                    <!---->
+                    <?php
+
+                    $resultRevenue = $conn->query("
+                        SELECT SUM(total) AS revenue
+                        FROM orders
+                        WHERE LOWER(status)='delivered'
+                        ");
+
+                    $revenue = $resultRevenue->fetch_assoc()['revenue'];
+
+                    ?>
+
+                    <div class="bg-green-100 rounded p-6 text-center mb-6">
+
+                        <h2 class="text-2xl font-bold">
+                            Total Revenue
+                        </h2>
+
+                        <p class="text-4xl text-green-700 mt-3">
+
+                            <?= number_format($revenue, 2) ?> USD
+
+                        </p>
+
+                    </div>
+
+
+                    <!---->
                 </tbody>
             </table>
         </div>
@@ -207,7 +238,7 @@ if ($order_months_result->num_rows > 0) {
 
     <!-- Footer -->
     <footer class="text-center py-6 bg-gray-200 text-gray-600">
-        <p>&copy; 2025 Swift Buy 🛒 | All Rights Reserved</p>
+        <p>&copy; 2026 Thanh Buy 🛒 | All Rights Reserved</p>
     </footer>
 
     <script>

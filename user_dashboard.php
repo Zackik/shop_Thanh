@@ -6,8 +6,74 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+
+
 // Fetch user information from the database
 include 'db_config.php';
+
+$user_id = $_SESSION['user_id'];
+// =======================
+// CANCEL ORDER
+// =======================
+if(isset($_GET['cancel_order'])){
+
+    $order_id = intval($_GET['cancel_order']);
+
+    // Hủy đơn
+    $update = $conn->prepare("
+        UPDATE orders
+        SET status='Canceled'
+        WHERE id=?
+        AND user_id=?
+        AND LOWER(status)='pending'
+    ");
+
+    $update->bind_param("ii",$order_id,$user_id);
+
+    if($update->execute() && $update->affected_rows>0){
+
+        // Lấy tên User
+        $userQuery = $conn->prepare("
+            SELECT full_name
+            FROM users
+            WHERE id=?
+        ");
+
+        $userQuery->bind_param("i",$user_id);
+        $userQuery->execute();
+
+        $userData = $userQuery->get_result()->fetch_assoc();
+
+        $username = $userData['full_name'];
+
+        // Thông báo cho Admin
+        $message = "🔔 ".$username." canceled Order #".$order_id;
+
+        $notify = $conn->prepare("
+            INSERT INTO notifications
+            (user_id,order_id,message,is_read)
+            VALUES(?,?,?,0)
+        ");
+
+        $notify->bind_param(
+            "iis",
+            $user_id,
+            $order_id,
+            $message
+        );
+
+        if(!$notify->execute()){
+    die("Notification Error : ".$notify->error);
+}
+
+    header("Location:user_dashboard.php");
+    exit();
+}
+}
+
+
+
+//
 $user_id = $_SESSION['user_id'];
 $sql = "SELECT * FROM users WHERE id='$user_id'";
 $result = $conn->query($sql);
@@ -20,7 +86,7 @@ $user = $result->fetch_assoc();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swift Buy 🛒</title>
+    <title>Thanh Buy 🛒</title>
     <link rel="icon" href="favicon.png" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
@@ -53,7 +119,7 @@ $user = $result->fetch_assoc();
     <!-- Header -->
     <header class="flex justify-between items-center px-6 py-4 bg-white shadow-md">
         <div class="text-2xl font-bold text-indigo-600">
-            <a href="index.php">Swift Buy 🛒</a>
+            <a href="index.php">Thanh Buy 🛒</a>
         </div>
 
         <div>
@@ -76,7 +142,7 @@ $user = $result->fetch_assoc();
         <div class="container mx-auto p-6 mt-10 bg-white shadow-md rounded-lg max-w-4xl">
             <h1 class="text-3xl font-semibold text-center mb-6">Welcome, <?php echo htmlspecialchars($user['full_name'], ENT_QUOTES); ?>!</h1>
             <p class="text-center mb-6">Your one-stop shop for exclusive gadgets and smart accessories.</p>
-            <p class="text-center">Swift Buy 🛒 is dedicated to providing the best and most cutting-edge gadgets and accessories. Shop with confidence and enjoy top-tier products for modern living.</p>
+            <p class="text-center">Thanh Buy 🛒 is dedicated to providing the best and most cutting-edge gadgets and accessories. Shop with confidence and enjoy top-tier products for modern living.</p>
         </div>
 
         <!-- User Info Section -->
@@ -108,7 +174,7 @@ $user = $result->fetch_assoc();
                                 <img src="' . $row['image'] . '" alt="' . htmlspecialchars($row['name'], ENT_QUOTES) . '" class="w-full h-48 object-cover">
                                 <div class="p-4">
                                     <h3 class="text-lg font-semibold">' . htmlspecialchars($row['name'], ENT_QUOTES) . '</h3>
-                                    <p class="text-indigo-600 font-bold">' . number_format($row['price'], 2) . ' Taka</p>
+                                    <p class="text-indigo-600 font-bold">' . number_format($row['price'], 2) . ' USD</p>
                                     <form method="POST" action="add_to_cart.php">
                                         <input type="hidden" name="product_name" value="' . htmlspecialchars($row['name'], ENT_QUOTES) . '">
                                         <input type="hidden" name="product_price" value="' . $row['price'] . '">
@@ -143,13 +209,208 @@ $user = $result->fetch_assoc();
             <button type="submit" class="bg-indigo-600 text-white px-4 py-3 rounded-md text-lg hover:bg-indigo-700">Submit</button>
         </form>
     </div>
+    <!-- Purchase History -->
+<div class="container mx-auto p-6 mt-10 bg-white shadow-md rounded-lg max-w-5xl">
+    <h2 class="text-2xl font-semibold text-center mb-6">
+        Purchase History 📦
+    </h2>
+
+<?php
+
+$sql = "
+SELECT *
+FROM orders
+WHERE user_id = '$user_id'
+ORDER BY created_at DESC
+";
+
+$result = $conn->query($sql);
+
+if($result->num_rows > 0){
+
+    while($order = $result->fetch_assoc()){
+
+?>
+
+<div class="border rounded-lg p-4 mb-6 bg-gray-50">
+
+<div class="flex justify-between mb-2">
+
+<div>
+    <b>Order #<?= $order['id']; ?></b>
+</div>
+
+<div>
+
+    <?php
+
+$status = strtolower($order['status']);
+
+if($status=="pending"){
+    echo "<span class='text-yellow-600 font-semibold'>Pending</span>";
+}
+elseif($status=="delivered"){
+    echo "<span class='text-green-600 font-semibold'>Delivered</span>";
+}
+elseif($status=="canceled"){
+    echo "<span class='text-red-600 font-semibold'>Canceled</span>";
+}
+else{
+    echo htmlspecialchars($order['status']);
+}
+
+?>
+
+</div>
+
+</div>
+
+<p>
+
+    <b>Date:</b>
+
+    <?= date("d M Y H:i",strtotime($order['created_at'])) ?>
+
+</p>
+
+<p>
+
+    <b>Payment:</b>
+
+    <?= htmlspecialchars($order['payment_method']) ?>
+
+</p>
+<p>
+
+    <b>Shipping Address:</b>
+
+    <?= htmlspecialchars($order['address']) ?>
+
+</p>
+<p class="font-bold text-indigo-600 mt-2">
+
+    Total :
+
+    <?= number_format($order['total'],2) ?>
+
+    USD
+
+</p>
+
+<?php
+
+            if ($status == "pending") {
+
+                ?>
+
+<div class="mt-4">
+
+<a href="user_dashboard.php?cancel_order=<?= $order['id']; ?>"
+   onclick="return confirm('Are you sure you want to cancel this order?')"
+   class="bg-red-600 text-white px-3 py-2 rounded">
+    Cancel Order
+</a>
+
+</div>
+
+<?php } ?>
+
+
+
+
+<hr class="my-4">
+
+<h3 class="font-semibold mb-2">
+
+Items Purchased
+
+</h3>
+
+<table class="w-full border">
+
+<tr class="bg-gray-200">
+
+<th class="border p-2">Product</th>
+
+<th class="border p-2">Price</th>
+
+<th class="border p-2">Qty</th>
+
+<th class="border p-2">Subtotal</th>
+
+</tr>
+
+<?php
+
+$item_sql="
+
+SELECT *
+
+FROM order_items
+
+WHERE order_id=".$order['id'];
+
+$item_result=$conn->query($item_sql);
+
+while($item=$item_result->fetch_assoc()){
+
+?>
+
+<tr>
+
+<td class="border p-2">
+
+<?= htmlspecialchars($item['product_name']) ?>
+
+</td>
+
+<td class="border p-2">
+
+<?= number_format($item['product_price'],2) ?>
+
+</td>
+
+<td class="border p-2">
+
+<?= $item['quantity'] ?>
+
+</td>
+
+<td class="border p-2">
+
+<?= number_format($item['product_price']*$item['quantity'],2) ?>
+
+</td>
+
+</tr>
+
+<?php } ?>
+
+</table>
+
+</div>
+
+<?php
+
+}
+
+}else{
+
+echo "<p class='text-center text-gray-500'>You have not purchased anything yet.</p>";
+
+}
+
+?>
+
+</div>
 
     </main>
 
     <!-- Footer Section -->
     <footer class="mt-4 p-6">
-        <p>&copy; 2025 Swift Buy 🛒 | All Rights Reserved</p>
+        <p>&copy; 2026 Thanh Buy 🛒 | All Rights Reserved</p>
     </footer>
 </body>
 
 </html>
+
