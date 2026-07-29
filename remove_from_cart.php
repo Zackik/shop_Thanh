@@ -6,6 +6,7 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
 }
+//web cart remove 
 
 $user_id = $_SESSION['user_id']; // Get the logged-in user's ID
 
@@ -24,6 +25,7 @@ if (isset($_GET['id'])) {
         header("Location: cart.php"); // Redirect to cart page after removal
         exit();
     } else {
+        //error remove 
         echo "<script>alert('Error removing item.');</script>";
     }
 }

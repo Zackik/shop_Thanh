@@ -1,76 +1,374 @@
-# SwiftBuy - E-Commerce Website
+# 🛒 Thanh Buy - E-Commerce Website
 
-SwiftBuy is an e-commerce website built using **HTML**, **CSS**, **JavaScript**, **Tailwind CSS**, **PHP**, and **MySQL**. This project demonstrates skills in web development, including user authentication, database management, and dynamic product handling for an online store. It has both **user** and **admin** dashboards with various features for managing profiles, orders, and products.
-## Visit: http://swiftbuy.free.nf/
+A complete PHP & MySQL E-Commerce website with User, Admin Dashboard, Shopping Cart, Order Management and REST API.
 
-## Features
+![PHP](https://img.shields.io/badge/PHP-8.x-blue)
+![MySQL](https://img.shields.io/badge/MySQL-Database-orange)
+![TailwindCSS](https://img.shields.io/badge/TailwindCSS-Frontend-38BDF8)
+![REST API](https://img.shields.io/badge/API-REST-green)
+![License](https://img.shields.io/badge/License-MIT-red)
 
-### User Dashboard:
-- **Registration & Login**: Users can register and log in to their accounts.
-- **Profile Management**: Users can view and edit their profile information, including name, email, password, and profile picture.
-- **Product Management**: Users can browse products, add them to the cart, and adjust the quantity in the cart.
-- **Checkout**: Users can proceed with checkout, and once an order is confirmed, the inventory and order details are updated in the database.
+---
 
-### Admin Dashboard:
-- **Admin Login**: Admins can log in with admin credentials.
-- **Product Management**: Admins can add new products, upload product images, and delete products from the website.
-- **Order Management**: Admins can view the total number of orders.
-- **Sales Visualization**: Admins can view a monthly sales graph to monitor performance.
+# 📖 Project Overview
 
-## Technologies Used
+Thanh Buy is an online shopping system developed using **PHP**, **MySQL**, and **TailwindCSS**.
 
-- **Frontend**: HTML, CSS, JavaScript, Tailwind CSS, Chart.js
-- **Backend**: PHP
-- **Database**: MySQL
-- **Tools**: XAMPP, VS Code
+The system supports two roles:
 
-## Installation
+- 👤 Customer
+- 👨‍💼 Administrator
 
-Follow these steps to set up the project locally:
+Customers can browse products, add items to the shopping cart, place orders, manage their profile, and cancel pending orders.
 
-1. **Clone the Repository**:
-   ```
-   git clone https://github.com/Tasin1025/swift-buy-full-ecommerce-php
-    ```
-2. **Place the Project in the XAMPP `htdocs` Folder:**
-- Move the project folder to the `htdocs` directory in your XAMPP installation path (usually located at `C:\xampp\htdocs` on Windows).
+Administrators can manage products, monitor orders, update order status, receive cancellation notifications, and manage the store.
 
-3. **Set Up XAMPP:**
-- Open **XAMPP** and start **Apache** and **MySQL** services.
+---
 
-4. **Set Up the Database:**
-- Open **phpMyAdmin** (usually at `localhost/phpmyadmin`).
-- Create a new database (e.g., `swiftbuy`).
-- Import the `swiftbuy.sql` file (found in the project folder) into the database.
+# ✨ Features
 
-5. **Access the Project:**
-- Open your browser and navigate to `http://localhost/swiftbuy`.
-- The website should now be running locally.
-## Live Website
- http://swiftbuy.free.nf/ ( not SSL secured )
-## Login Credentials
-**Admin Login:**
-Email: admin@gmail.com
- Password: tasin1234
+## Customer
 
-**User Login:**
-Email: tasin@gmail.com
- Password: tasin1234
+- User Registration
+- User Login
+- JWT/Session Authentication
+- View Products
+- Product Details
+- Shopping Cart
+- Checkout
+- Purchase History
+- Cancel Pending Orders
+- Edit Profile
+- REST API Support
 
-## Usage
+---
 
-### User Functionality:
-- Register an account as a user.
-- Log in and manage your profile.
-- Browse products, add them to your cart, and complete your purchase.
+## Administrator
 
-### Admin Functionality:
-- Log in using admin credentials.
-- Add, delete, and manage products.
-- View monthly sales graphs and monitor orders.
+- Admin Login
+- Dashboard
+- Upload Products
+- Edit Products
+- Delete Products
+- View All Orders
+- Update Order Status
+- Delete Orders
+- View Sales Chart
+- Notification Center
+- Receive Order Cancellation Notifications
 
+---
 
-## Future Enhancements
-- User reviews and ratings for products.
-- Wishlist functionality for users.
-- Improved admin analytics with more detailed reports.
+# 🛠 Technologies
+
+Backend
+
+- PHP
+- MySQL
+- REST API
+- JSON
+
+Frontend
+
+- HTML5
+- TailwindCSS
+- JavaScript
+
+Libraries
+
+- Chart.js
+
+Server
+
+- Apache
+- XAMPP
+
+---
+
+# 📂 Project Structure
+
+```
+shop_Thanh/
+
+│
+├── api/
+│   ├── login_api.php
+│   ├── register_api.php
+│   ├── products_api.php
+│   ├── orders_api.php
+│   ├── cart_api.php
+│   ├── profile_api.php
+│
+├── product_images/
+│
+├── admin_dashboard.php
+├── user_dashboard.php
+├── view_orders.php
+├── cart.php
+├── checkout.php
+├── profile.php
+├── login.php
+├── register.php
+├── db_config.php
+└── index.php
+```
+
+---
+
+# 🗄 Database
+
+Main Tables
+
+- users
+- products
+- cart
+- orders
+- order_items
+- notifications
+
+Relationships
+
+```
+Users
+   │
+   ├──────── Orders
+   │            │
+   │            └────── Order Items
+   │
+   └──────── Cart
+
+Products
+    │
+    ├──── Cart
+    └──── Order Items
+
+Notifications
+      │
+      └──── Order Cancellation
+```
+
+---
+
+# 🔥 REST API
+
+## Login
+
+```
+POST /api/login_api.php
+```
+
+Body
+
+```json
+{
+    "email":"admin@gmail.com",
+    "password":"123456"
+}
+```
+
+Response
+
+```json
+{
+    "status":"success",
+    "message":"Login successful",
+    "user":{
+        "id":1,
+        "name":"Admin",
+        "email":"admin@gmail.com",
+        "role":"admin"
+    }
+}
+```
+
+---
+
+## Register
+
+```
+POST /api/register_api.php
+```
+
+---
+
+## Products
+
+```
+GET /api/products_api.php
+```
+
+Returns all products.
+
+---
+
+## Orders
+
+```
+GET /api/orders_api.php
+```
+
+Returns all orders.
+
+---
+
+## Cart
+
+```
+GET /api/cart_api.php
+```
+
+Returns user shopping cart.
+
+---
+
+## Profile
+
+```
+GET /api/profile_api.php?id=1
+```
+
+Returns user profile.
+
+---
+
+# 📊 Admin Dashboard
+
+The dashboard includes
+
+- Product Management
+- Order Management
+- Sales Statistics
+- Chart.js Reports
+- Notifications
+- Product Editing
+- Product Upload
+
+---
+
+# 🔔 Notification System
+
+Whenever a customer cancels an order:
+
+- Order status becomes **Canceled**
+- Notification is automatically inserted into
+
+```
+notifications
+```
+
+Admin Dashboard displays
+
+```
+🔔 Notifications (3)
+```
+
+Clicking Notifications marks them as read.
+
+---
+
+# 🛒 Shopping Flow
+
+```
+Register
+      │
+      ▼
+Login
+      │
+      ▼
+Browse Products
+      │
+      ▼
+Add to Cart
+      │
+      ▼
+Checkout
+      │
+      ▼
+Create Order
+      │
+      ▼
+Purchase History
+      │
+      ▼
+Cancel Order (Pending)
+      │
+      ▼
+Admin Notification
+```
+
+---
+
+# 🚀 Installation
+
+Clone repository
+
+```bash
+git clone https://github.com/Zackik/shop_Thanh.git
+```
+
+Move project to
+
+```
+htdocs/
+```
+
+Start
+
+- Apache
+- MySQL
+
+Import database
+
+```
+shop.sql
+```
+
+Update
+
+```
+db_config.php
+```
+
+Open browser
+
+```
+http://localhost/shop_Thanh
+```
+
+---
+
+# 📸 Screenshots
+
+Recommended screenshots
+
+- Home Page
+- Login
+- Register
+- Shopping Cart
+- Checkout
+- Purchase History
+- Admin Dashboard
+- Product Management
+- Order Management
+- Notifications
+- REST API (Postman)
+
+---
+
+# 👨‍💻 Author
+
+**Thanh Bui**
+
+Software Engineering Student
+
+GitHub
+
+https://github.com/Zackik
+
+---
+
+# 📄 License
+
+This project is developed for educational purposes.
+
+Feel free to use and modify it.
