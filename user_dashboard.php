@@ -1,4 +1,66 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+include 'db_config.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+$user_id = intval($_SESSION['user_id']);
+
+// Tự động thêm cột citizen_id nếu database chưa có
+$conn->query("CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone VARCHAR(50) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    citizen_id VARCHAR(50) DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
+// Lấy thông tin user
+$stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$user = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+$update_msg = "";
+$error_msg = "";
+
+// Xử lý khi user bấm cập nhật CCCD
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_citizen'])) {
+    $new_citizen_id = trim($_POST['citizen_id']);
+    if (!empty($new_citizen_id)) {
+        $update_stmt = $conn->prepare("UPDATE users SET citizen_id = ? WHERE id = ?");
+        $update_stmt->bind_param("si", $new_citizen_id, $user_id);
+        if ($update_stmt->execute()) {
+            $update_msg = "Citizen ID updated successfully!";
+            $user['citizen_id'] = $new_citizen_id;
+        } else {
+            $error_msg = "Error updating Citizen ID.";
+        }
+        $update_stmt->close();
+    } else {
+        $error_msg = "Citizen ID cannot be empty.";
+    }
+}
+
+$has_citizen_id = !empty($user['citizen_id']);
+
+// Chặn server-side nếu cố tình gõ URL trực tiếp mà chưa có CCCD
+$restricted_action = isset($_GET['action']) ? $_GET['action'] : '';
+if (($restricted_action === 'buy' || $restricted_action === 'loan') && !$has_citizen_id) {
+    header("Location: login.php?error=missing_citizen_id");
+    exit();
+}
+?>
+
+<?php
 // Bắt đầu session và kiểm tra đăng nhập an toàn
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -111,6 +173,16 @@ if (!$user) {
                 <a href="#products" class="hover:text-white transition">Catalog</a>
                 <a href="#contact" class="hover:text-white transition">Support</a>
                 <a href="cart.php" class="hover:text-white transition flex items-center gap-1 font-semibold text-white">Cart 🛒</a>
+                <a href="loan_system.php" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 rounded-2xl text-xs font-extrabold uppercase tracking-wider transition shadow-lg flex items-center gap-2 inline-flex">
+    <span>💸</span> Quick Loans (100 - 1000 USD)
+</a>
+<a href="./card_game.php" class="flex-1 group relative bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 border border-emerald-400/40 p-4 rounded-2xl shadow-xl shadow-emerald-950/50 transition-all duration-300 transform hover:-translate-y-1 text-center flex items-center justify-center gap-3">
+            <span class="text-2xl">👤</span>
+            <div class="text-left">
+                <div class="text-[10px] text-emerald-200 uppercase tracking-widest font-extrabold">Play Game</div>
+                <div class="text-white font-black text-sm tracking-wide">User Casino Table</div>
+            </div>
+        </a>
             </nav>
 
             <div>
@@ -320,6 +392,8 @@ if (isset($_SESSION['user_id']) && $_SESSION['role'] !== 'admin') {
     </form>
 </div>
 
+
+
 <!-- JavaScript giúp tự động cuộn xuống tin nhắn mới nhất khi vừa load trang -->
 <script>
     const chatContainer = document.getElementById('chat-messages-container');
@@ -426,31 +500,58 @@ if (isset($_SESSION['user_id']) && $_SESSION['role'] !== 'admin') {
         
 
         <!-- Contact Us Section -->
-        <div id="contact" class="bg-neutral-950 p-8 sm:p-12 rounded-3xl border border-white/10 shadow-2xl max-w-3xl mx-auto w-full">
-            <div class="text-center mb-10">
-                <span class="text-neutral-400 text-xs font-semibold tracking-widest uppercase mb-2 block">Support</span>
-                <h2 class="text-3xl font-extrabold text-white tracking-tight">Contact Us</h2>
+        <?php
+// Xử lý khi người dùng bấm nút Submit
+$contact_success = false;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_contact'])) {
+    // Bạn có thể thêm code lưu thông tin vào database hoặc gửi mail ở đây nếu cần
+    $contact_success = true;
+}
+?>
+
+<div id="contact" class="bg-neutral-950 p-8 sm:p-12 rounded-3xl border border-white/10 shadow-2xl max-w-3xl mx-auto w-full relative">
+    
+    <!-- Tiêu đề -->
+    <div class="text-center mb-10">
+        <span class="text-neutral-400 text-xs font-semibold tracking-widest uppercase mb-2 block">Support</span>
+        <h2 class="text-3xl font-extrabold text-white tracking-tight">Contact Us</h2>
+    </div>
+
+    <!-- Thông báo khi gửi thành công -->
+    <?php if ($contact_success): ?>
+        <div class="mb-8 p-4 rounded-2xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-3 shadow-lg animate-fade-in">
+            <span class="text-lg">✅</span> 
+            <div>
+                <span>Your message has been sent successfully! We will get back to you as soon as possible.</span>
             </div>
-            <form action="noaction.php" method="POST" class="space-y-4">
-                <div>
-                    <input type="text" name="name" placeholder="Enter your name" required value="<?php echo htmlspecialchars($user['full_name'], ENT_QUOTES, 'UTF-8'); ?>"
-                           class="w-full px-4 py-3.5 bg-neutral-900 border border-white/10 rounded-2xl text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/40 transition-all text-xs tracking-wide">
-                </div>
-                <div>
-                    <input type="email" name="email" placeholder="Enter your Email ID" required value="<?php echo htmlspecialchars($user['email'], ENT_QUOTES, 'UTF-8'); ?>"
-                           class="w-full px-4 py-3.5 bg-neutral-900 border border-white/10 rounded-2xl text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/40 transition-all text-xs tracking-wide">
-                </div>
-                <div>
-                    <input type="text" name="phone" placeholder="Enter your Phone Number" required value="<?php echo htmlspecialchars($user['phone'], ENT_QUOTES, 'UTF-8'); ?>"
-                           class="w-full px-4 py-3.5 bg-neutral-900 border border-white/10 rounded-2xl text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/40 transition-all text-xs tracking-wide">
-                </div>
-                <div>
-                    <textarea name="message" placeholder="Enter your Message" rows="4" required 
-                              class="w-full px-4 py-3.5 bg-neutral-900 border border-white/10 rounded-2xl text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/40 transition-all resize-none text-xs tracking-wide"></textarea>
-                </div>
-                <button type="submit" class="w-full bg-white text-black font-semibold py-4 rounded-2xl shadow-lg hover:bg-neutral-200 transition-all text-xs uppercase tracking-widest">Submit Message</button>
-            </form>
         </div>
+    <?php endif; ?>
+
+    <!-- Form Liên Hệ -->
+    <form action="" method="POST" class="space-y-4">
+        <div>
+            <input type="text" name="name" placeholder="Enter your name" required value="<?php echo htmlspecialchars($user['full_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                   class="w-full px-4 py-3.5 bg-neutral-900 border border-white/10 rounded-2xl text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/40 transition-all text-xs tracking-wide">
+        </div>
+        <div>
+            <input type="email" name="email" placeholder="Enter your Email ID" required value="<?php echo htmlspecialchars($user['email'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                   class="w-full px-4 py-3.5 bg-neutral-900 border border-white/10 rounded-2xl text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/40 transition-all text-xs tracking-wide">
+        </div>
+        <div>
+            <input type="text" name="phone" placeholder="Enter your Phone Number" required value="<?php echo htmlspecialchars($user['phone'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                   class="w-full px-4 py-3.5 bg-neutral-900 border border-white/10 rounded-2xl text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/40 transition-all text-xs tracking-wide">
+        </div>
+        <div>
+            <textarea name="message" placeholder="Enter your Message" rows="4" required 
+                      class="w-full px-4 py-3.5 bg-neutral-900 border border-white/10 rounded-2xl text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/40 transition-all resize-none text-xs tracking-wide"></textarea>
+        </div>
+        
+        <!-- Nút submit có kèm name="submit_contact" để nhận diện -->
+        <button type="submit" name="submit_contact" value="1" class="w-full bg-white text-black font-semibold py-4 rounded-2xl shadow-lg hover:bg-neutral-200 transition-all text-xs uppercase tracking-widest cursor-pointer">
+            Submit Message
+        </button>
+    </form>
+</div>
 
     </main>
 
@@ -494,9 +595,70 @@ if (isset($_SESSION['user_id']) && $_SESSION['role'] !== 'admin') {
     
 
     <!-- Footer -->
-    <footer class="text-center py-8 bg-black border-t border-white/10 text-neutral-500 text-xs tracking-widest uppercase mt-12">
+    <!-- Footer -->
+<footer class="bg-black border-t border-amber-500/20 text-neutral-400 text-xs mt-16 pt-12 pb-8">
+    <div class="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+        
+        <!-- Cột 1: Thông tin thương hiệu & Dịch vụ -->
+        <div class="space-y-3">
+            <h3 class="text-amber-400 font-extrabold uppercase tracking-widest text-sm">VIP Casino Royale</h3>
+            <p class="text-neutral-400 leading-relaxed">
+                Sân chơi giải trí bài 21 điểm (Blackjack) đỉnh cao, giao lưu trí tuệ và thử thách vận may đẳng cấp quốc tế.
+            </p>
+            <div class="text-[11px] text-amber-300/80 font-bold uppercase tracking-wider">
+                ✨ Dịch vụ: Giải trí trực tuyến, Bàn cược VIP, Sự kiện giải đấu bài lá.
+            </div>
+        </div>
+
+        <!-- Cột 2: Thời gian mở cửa -->
+        <div class="space-y-3">
+            <h4 class="text-amber-400 font-extrabold uppercase tracking-widest text-sm">🕒 Giờ Mở Cửa</h4>
+            <ul class="space-y-1.5 text-neutral-300">
+                <li class="flex justify-between"><span>Thứ Hai - Thứ Sáu:</span> <strong class="text-amber-300">08:00 - 03:00</strong></li>
+                <li class="flex justify-between"><span>Thứ Bảy - Chủ Nhật:</span> <strong class="text-amber-300">24/7 (Cả ngày)</strong></li>
+                <li class="text-[11px] text-emerald-400 pt-1 font-semibold">● Hệ thống trực tuyến hoạt động liên tục.</li>
+            </ul>
+        </div>
+
+        <!-- Cột 3: Liên hệ (Email, Số điện thoại, Địa chỉ) -->
+        <div class="space-y-3">
+            <h4 class="text-amber-400 font-extrabold uppercase tracking-widest text-sm">📞 Thông Tin Liên Hệ</h4>
+            <ul class="space-y-2 text-neutral-300">
+                <li class="flex items-center gap-2">
+                    <span>📍</span> <span>Tầng 68, Landmark Tower, Quận 1, TP. Hồ Chí Minh</span>
+                </li>
+                <li class="flex items-center gap-2">
+                    <span>☎️</span> <a href="tel:+84900000000" class="hover:text-amber-400 transition">+84 (0) 900 000 000</a>
+                </li>
+                <li class="flex items-center gap-2">
+                    <span>✉️</span> <a href="mailto:support@casinoroyale.vip" class="hover:text-amber-400 transition">support@casinoroyale.vip</a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Cột 4: Bản đồ vị trí (Google Maps Embed) -->
+        <div class="space-y-3">
+            <h4 class="text-amber-400 font-extrabold uppercase tracking-widest text-sm">🗺️ Bản Đồ Vị Trí</h4>
+            <div class="rounded-xl overflow-hidden border border-amber-500/30 h-32 shadow-md">
+                <iframe 
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.507663249015!2d106.70200877688224!3d10.777073289379685!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f440e1f5c09%3A0x6b63d40e9db6b26d!2zSG9hIE5naeG7iywgQuG6vyBOaOG6vywgUXXhuq1uIDEsIEjhu5MgQ2jDrSBNaW5oLCBWaeG7h3QgTmFt!5e0!3m2!1svi!2svn!4v1700000000000!5m2!1svi!2svn" 
+                    width="100%" 
+                    height="100%" 
+                    style="border:0;" 
+                    allowfullscreen="" 
+                    loading="lazy" 
+                    referrerpolicy="no-referrer-when-downgrade">
+                </iframe>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Copyright Bar -->
+    <div class="max-w-6xl mx-auto px-4 border-t border-white/10 pt-6 text-center text-neutral-500 text-[11px] tracking-widest uppercase">
         <p>&copy; 2026 Thanh Buy 🛒 &mdash; All Rights Reserved</p>
-    </footer>
+    </div>
+</footer>
     
 
     <!-- Chat JavaScript -->

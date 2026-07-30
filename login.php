@@ -72,7 +72,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $_SESSION['login_attempts'] < 3) {
                 if ($user['role'] === 'admin') {
                     header("Location: admin_dashboard.php");
                 } else {
-                    header("Location: user_dashboard.php");
+                    header("Location: verify_identity.php");
                 }
                 exit();
             }
@@ -186,9 +186,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $_SESSION['login_attempts'] < 3) {
     </main>
 
     <!-- Footer -->
-    <footer class="relative z-10 text-center py-8 bg-black border-t border-white/10 text-neutral-500 text-xs tracking-widest uppercase">
-        <p>&copy; 2026 Thanh Buy 🛒 &mdash; All Rights Reserved</p>
-    </footer>
+    <!-- Footer -->
+
 </body>
+
 
 </html>

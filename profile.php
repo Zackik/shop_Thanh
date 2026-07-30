@@ -214,6 +214,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <button type="submit" name="update_profile" class="w-full bg-white text-black font-semibold py-4 rounded-2xl shadow-lg hover:bg-neutral-200 transition-all text-xs uppercase tracking-widest">Update Profile</button>
                 </div>
             </form>
+            
 
             <!-- Change Password Form Block (Uses same security context above) -->
             <div class="mt-10 pt-8 border-t border-white/10 space-y-4">

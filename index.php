@@ -263,9 +263,70 @@ echo '</a>';
     </section>
 
     <!-- Footer -->
-    <footer class="text-center py-12 bg-black border-t border-white/10 text-neutral-500 text-xs tracking-widest uppercase">
+    <!-- Footer -->
+<footer class="bg-black border-t border-amber-500/20 text-neutral-400 text-xs mt-16 pt-12 pb-8">
+    <div class="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+        
+        <!-- Cột 1: Thông tin thương hiệu & Dịch vụ -->
+        <div class="space-y-3">
+            <h3 class="text-amber-400 font-extrabold uppercase tracking-widest text-sm">VIP Casino Royale</h3>
+            <p class="text-neutral-400 leading-relaxed">
+                Sân chơi giải trí bài 21 điểm (Blackjack) đỉnh cao, giao lưu trí tuệ và thử thách vận may đẳng cấp quốc tế.
+            </p>
+            <div class="text-[11px] text-amber-300/80 font-bold uppercase tracking-wider">
+                ✨ Dịch vụ: Giải trí trực tuyến, Bàn cược VIP, Sự kiện giải đấu bài lá.
+            </div>
+        </div>
+
+        <!-- Cột 2: Thời gian mở cửa -->
+        <div class="space-y-3">
+            <h4 class="text-amber-400 font-extrabold uppercase tracking-widest text-sm">🕒 Giờ Mở Cửa</h4>
+            <ul class="space-y-1.5 text-neutral-300">
+                <li class="flex justify-between"><span>Thứ Hai - Thứ Sáu:</span> <strong class="text-amber-300">08:00 - 03:00</strong></li>
+                <li class="flex justify-between"><span>Thứ Bảy - Chủ Nhật:</span> <strong class="text-amber-300">24/7 (Cả ngày)</strong></li>
+                <li class="text-[11px] text-emerald-400 pt-1 font-semibold">● Hệ thống trực tuyến hoạt động liên tục.</li>
+            </ul>
+        </div>
+
+        <!-- Cột 3: Liên hệ (Email, Số điện thoại, Địa chỉ) -->
+        <div class="space-y-3">
+            <h4 class="text-amber-400 font-extrabold uppercase tracking-widest text-sm">📞 Thông Tin Liên Hệ</h4>
+            <ul class="space-y-2 text-neutral-300">
+                <li class="flex items-center gap-2">
+                    <span>📍</span> <span>Tầng 68, Landmark Tower, Quận 1, TP. Hồ Chí Minh</span>
+                </li>
+                <li class="flex items-center gap-2">
+                    <span>☎️</span> <a href="tel:+84900000000" class="hover:text-amber-400 transition">+84 (0) 900 000 000</a>
+                </li>
+                <li class="flex items-center gap-2">
+                    <span>✉️</span> <a href="mailto:support@casinoroyale.vip" class="hover:text-amber-400 transition">support@casinoroyale.vip</a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Cột 4: Bản đồ vị trí (Google Maps Embed) -->
+        <div class="space-y-3">
+            <h4 class="text-amber-400 font-extrabold uppercase tracking-widest text-sm">🗺️ Bản Đồ Vị Trí</h4>
+            <div class="rounded-xl overflow-hidden border border-amber-500/30 h-32 shadow-md">
+                <iframe 
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.507663249015!2d106.70200877688224!3d10.777073289379685!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f440e1f5c09%3A0x6b63d40e9db6b26d!2zSG9hIE5naeG7iywgQuG6vyBOaOG6vywgUXXhuq1uIDEsIEjhu5MgQ2jDrSBNaW5oLCBWaeG7h3QgTmFt!5e0!3m2!1svi!2svn!4v1700000000000!5m2!1svi!2svn" 
+                    width="100%" 
+                    height="100%" 
+                    style="border:0;" 
+                    allowfullscreen="" 
+                    loading="lazy" 
+                    referrerpolicy="no-referrer-when-downgrade">
+                </iframe>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Copyright Bar -->
+    <div class="max-w-6xl mx-auto px-4 border-t border-white/10 pt-6 text-center text-neutral-500 text-[11px] tracking-widest uppercase">
         <p>&copy; 2026 Thanh Buy 🛒 &mdash; All Rights Reserved</p>
-    </footer>
+    </div>
+</footer>
 
     <!-- TESLA-STYLE AI ASSISTANT WIDGET (GEMINI CONNECTED) -->
     <div class="fixed bottom-6 right-6 z-50">
