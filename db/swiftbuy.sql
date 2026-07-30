@@ -279,3 +279,18 @@ CREATE TABLE notifications (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
 );
+-- Thêm cột giá khuyến mãi cho bảng products (nếu chưa có)
+ALTER TABLE products ADD COLUMN sale_price DECIMAL(10,2) DEFAULT NULL;
+
+-- Tạo bảng tin nhắn sự kiện & hỗ trợ 2 chiều (Admin <-> Khách hàng)
+CREATE TABLE IF NOT EXISTS messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender_id INT NOT NULL, -- ID của người gửi (có thể là admin hoặc user)
+    receiver_id INT NOT NULL, -- ID của người nhận (0 hoặc ID cụ thể nếu chat riêng)
+    subject VARCHAR(255) DEFAULT NULL, -- Tiêu đề sự kiện (nếu là tin nhắn từ admin)
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE users 
+ADD COLUMN two_factor_enabled TINYINT(1) DEFAULT 0,
+ADD COLUMN two_factor_secret VARCHAR(255) NULL;

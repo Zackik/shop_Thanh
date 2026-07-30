@@ -1,413 +1,517 @@
 <?php
-// Start the session
 session_start();
 
-// Check if the user is logged in and is an admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: login.php");
     exit();
 }
 
-// Fetch user information from the database
 include 'db_config.php';
-// Mark notifications as read
-if (isset($_GET['read'])) {
+$admin_id = $_SESSION['user_id'];
 
-    $conn->query("
-        UPDATE notifications
-        SET is_read = 1
-        WHERE is_read = 0
-    ");
-}
+$toast_message = "";
+$toast_type = "success";
 
-// Đếm thông báo chưa đọc
-$count = $conn->query("
-SELECT COUNT(*) AS total
-FROM notifications
-WHERE is_read = 0
-");
+// 1. Handle Customer Edit
+if (isset($_POST['update_customer'])) {
+    $cust_id = intval($_POST['customer_id']);
+    $full_name = trim($_POST['full_name']);
+    $email = trim($_POST['email']);
+    $phone = trim($_POST['phone']);
+    $address = trim($_POST['address']);
+    $role = $_POST['role'];
 
-$unread = $count->fetch_assoc()['total'];
-
-//
-$user_id = $_SESSION['user_id'];
-$stmt = $conn->prepare("SELECT full_name, email FROM users WHERE id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$user = $result->fetch_assoc();
-
-// Handle product deletion
-if (isset($_GET['delete_id'])) {
-    $delete_id = intval($_GET['delete_id']);
-
-    // Delete product from the database
-    $stmt = $conn->prepare("DELETE FROM products WHERE id = ?");
-    $stmt->bind_param("i", $delete_id);
-
-    if ($stmt->execute()) {
-        echo "<script>alert('Product deleted successfully!');</script>";
-        header("Location: admin_dashboard.php#products"); // Redirect to products section
-        exit();
-    } else {
-        echo "<script>alert('Error deleting product.');</script>";
-    }
+    $stmt = $conn->prepare("UPDATE users SET full_name = ?, email = ?, phone = ?, address = ?, role = ? WHERE id = ?");
+    $stmt->bind_param("sssssi", $full_name, $email, $phone, $address, $role, $cust_id);
+    if ($stmt->execute()) { $toast_message = "Customer updated successfully!"; } 
+    else { $toast_message = "Error: " . $stmt->error; $toast_type = "error"; }
     $stmt->close();
 }
-//Handle edit product
-$editProduct = null;
-if (isset($_GET['edit_id'])) {
-    $edit_id = intval($_GET['edit_id']);
-    $stmt = $conn->prepare('SELECT * FROM products WHERE id=?');
-    $stmt->bind_param('i', $edit_id);
-    $stmt->execute();
-    $editProduct = $stmt->get_result()->fetch_assoc();
+
+// 2. Handle Delete Customer
+if (isset($_GET['delete_customer'])) {
+    $cust_id = intval($_GET['delete_customer']);
+    if ($cust_id === intval($admin_id)) {
+        $toast_message = "You cannot delete your own admin account!";
+        $toast_type = "error";
+    } else {
+        $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+        $stmt->bind_param("i", $cust_id);
+        if ($stmt->execute()) { $toast_message = "Customer deleted successfully!"; } 
+        else { $toast_message = "Error: " . $stmt->error; $toast_type = "error"; }
+        $stmt->close();
+    }
 }
 
-// Handle product upload form submission
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['upload_product'])) {
-    $product_name = htmlspecialchars($_POST['product_name']);
-    $price = htmlspecialchars($_POST['price']);
-    $description = htmlspecialchars($_POST['description']);
+// 3. Handle Add Product (with Sale Price)
+if (isset($_POST['add_product'])) {
+    $name = trim($_POST['name']);
+    $description = trim($_POST['description']);
+    $price = floatval($_POST['price']);
+    $sale_price = !empty($_POST['sale_price']) ? floatval($_POST['sale_price']) : NULL;
     $stock = intval($_POST['stock']);
-
-    // Handle image upload
-    if (!empty($_FILES['image']['name'])) {
+    
+    $image_path = "product_images/default.jpg";
+    if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
         $target_dir = "product_images/";
-        $target_file = $target_dir . basename($_FILES["image"]["name"]);
+        if (!is_dir($target_dir)) { mkdir($target_dir, 0755, true); }
+        $file_name = time() . "_" . basename($_FILES["image"]["name"]);
+        $target_file = $target_dir . $file_name;
+        if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) { $image_path = $target_file; }
+    }
 
-        // Check if file is a valid image
-        $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
-        $allowedTypes = ['jpg', 'jpeg', 'png', 'gif'];
+    $stmt = $conn->prepare("INSERT INTO products (name, description, price, sale_price, stock, image) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("ssddis", $name, $description, $price, $sale_price, $stock, $image_path);
+    if ($stmt->execute()) { $toast_message = "Product added successfully!"; } 
+    else { $toast_message = "Error: " . $stmt->error; $toast_type = "error"; }
+    $stmt->close();
+}
 
-        if (in_array($imageFileType, $allowedTypes)) {
-            if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
-                // Insert product into the database
-                $stmt = $conn->prepare("INSERT INTO products (name, description, price, stock, image) VALUES (?, ?, ?, ?, ?)");
-                $stmt->bind_param("ssdss", $product_name, $description, $price, $stock, $target_file);
-
-                if ($stmt->execute()) {
-                    echo "<script>alert('Product uploaded successfully!');</script>";
-                } else {
-                    echo "<script>alert('Error uploading product.');</script>";
-                }
-            } else {
-                echo "<script>alert('Error uploading image.');</script>";
-            }
+// 4. Handle Update Product (with Sale Price)
+if (isset($_POST['update_product'])) {
+    $prod_id = intval($_POST['product_id']);
+    $name = trim($_POST['name']);
+    $description = trim($_POST['description']);
+    $price = floatval($_POST['price']);
+    $sale_price = !empty($_POST['sale_price']) ? floatval($_POST['sale_price']) : NULL;
+    $stock = intval($_POST['stock']);
+    
+    if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
+        $target_dir = "product_images/";
+        if (!is_dir($target_dir)) { mkdir($target_dir, 0755, true); }
+        $file_name = time() . "_" . basename($_FILES["image"]["name"]);
+        $target_file = $target_dir . $file_name;
+        if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
+            $image_path = $target_file;
+            $stmt = $conn->prepare("UPDATE products SET name = ?, description = ?, price = ?, sale_price = ?, stock = ?, image = ? WHERE id = ?");
+            $stmt->bind_param("ssddisi", $name, $description, $price, $sale_price, $stock, $image_path, $prod_id);
         } else {
-            echo "<script>alert('Invalid image file type.');</script>";
+            $stmt = $conn->prepare("UPDATE products SET name = ?, description = ?, price = ?, sale_price = ?, stock = ? WHERE id = ?");
+            $stmt->bind_param("ssddii", $name, $description, $price, $sale_price, $stock, $prod_id);
         }
+    } else {
+        $stmt = $conn->prepare("UPDATE products SET name = ?, description = ?, price = ?, sale_price = ?, stock = ? WHERE id = ?");
+        $stmt->bind_param("ssddii", $name, $description, $price, $sale_price, $stock, $prod_id);
+    }
+    
+    if ($stmt->execute()) { $toast_message = "Product updated successfully!"; } 
+    else { $toast_message = "Error: " . $stmt->error; $toast_type = "error"; }
+    $stmt->close();
+}
+
+// 5. Handle Delete Product
+if (isset($_GET['delete_product'])) {
+    $prod_id = intval($_GET['delete_product']);
+    $stmt = $conn->prepare("DELETE FROM products WHERE id = ?");
+    $stmt->bind_param("i", $prod_id);
+    if ($stmt->execute()) { $toast_message = "Product deleted successfully!"; } 
+    else { $toast_message = "Error: " . $stmt->error; $toast_type = "error"; }
+    $stmt->close();
+}
+
+// 6. Handle Send Event Announcement / Message from Admin to Customer
+if (isset($_POST['send_broadcast'])) {
+    $subject = trim($_POST['subject']);
+    $message = trim($_POST['message']);
+    $target_user = intval($_POST['target_user']); // 0 = All Users, or Specific User ID
+
+    if ($target_user === 0) {
+        // Gửi broadcast cho toàn bộ users
+        $users_res = $conn->query("SELECT id FROM users");
+        $stmt = $conn->prepare("INSERT INTO messages (sender_id, receiver_id, subject, message) VALUES (?, ?, ?, ?)");
+        while ($u = $users_res->fetch_assoc()) {
+            $rec_id = $u['id'];
+            $stmt->bind_param("iiss", $admin_id, $rec_id, $subject, $message);
+            $stmt->execute();
+        }
+        $stmt->close();
+        $toast_message = "Announcement broadcasted to all customers successfully!";
+    } else {
+        // Gửi riêng cho 1 khách hàng
+        $stmt = $conn->prepare("INSERT INTO messages (sender_id, receiver_id, subject, message) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("iiss", $admin_id, $target_user, $subject, $message);
+        if ($stmt->execute()) { $toast_message = "Message sent to customer successfully!"; }
+        $stmt->close();
     }
 }
-// Handle Update Product
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_product'])) {
 
-    $id = intval($_POST['id']);
-    $name = $_POST['product_name'];
-    $description = $_POST['description'];
-    $price = $_POST['price'];
-    $stock = $_POST['stock'];
+// Fetch Admin Details
+$stmt = $conn->prepare("SELECT full_name, email FROM users WHERE id = ?");
+$stmt->bind_param("i", $admin_id);
+$stmt->execute();
+$admin = $stmt->get_result()->fetch_assoc();
+$stmt->close();
 
-    $stmt = $conn->prepare("
-        UPDATE products
-        SET
-            name=?,
-            description=?,
-            price=?,
-            stock=?
-        WHERE id=?
-    ");
-
-    $stmt->bind_param(
-        "ssdii",
-        $name,
-        $description,
-        $price,
-        $stock,
-        $id
-    );
-
-    if ($stmt->execute()) {
-
-        echo "<script>alert('Product updated successfully');</script>";
-
-        header("Refresh:0");
-    }
-}
+// Metrics
+$total_users = $conn->query("SELECT COUNT(*) AS c FROM users")->fetch_assoc()['c'] ?? 0;
+$total_orders = $conn->query("SELECT COUNT(*) AS c FROM orders")->fetch_assoc()['c'] ?? 0;
+$total_revenue = $conn->query("SELECT SUM(total) AS rev FROM orders WHERE LOWER(status)='delivered'")->fetch_assoc()['rev'] ?? 0;
+$total_products = $conn->query("SELECT COUNT(*) AS c FROM products")->fetch_assoc()['c'] ?? 0;
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thanh Buy 🛒 - Admin Dashboard</title>
-    <link rel="icon" href="favicon.png" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-image: url('banner-tech.jpg');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-panel { background: rgba(14, 14, 16, 0.85); backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        @keyframes floatGlow1 { 0%, 100% { transform: translate(-50%, 0px) scale(1); opacity: 0.15; } 50% { transform: translate(-30%, 50px) scale(1.2); opacity: 0.3; } }
+        @keyframes floatGlow2 { 0%, 100% { transform: translate(0px, 0px) scale(1.1); opacity: 0.1; } 50% { transform: translate(-40px, -30px) scale(0.9); opacity: 0.25; } }
+        .glow-orb-1 { animation: floatGlow1 10s ease-in-out infinite; }
+        .glow-orb-2 { animation: floatGlow2 12s ease-in-out infinite; }
     </style>
 </head>
+<body class="bg-black text-white antialiased min-h-screen flex flex-col justify-between selection:bg-white selection:text-black overflow-x-hidden">
 
-<body class="bg-gray-100 text-gray-800">
+    <!-- Ambient Gradients -->
+    <div class="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 blur-[160px] pointer-events-none rounded-full z-0 glow-orb-1"></div>
+    <div class="fixed top-1/3 left-1/4 w-[600px] h-[300px] bg-gradient-to-tr from-blue-600 to-indigo-500 blur-[140px] pointer-events-none rounded-full z-0 glow-orb-2"></div>
+
+    <!-- Toast Notification -->
+    <?php if (!empty($toast_message)): ?>
+        <div id="toast-alert" class="fixed top-6 right-6 z-50 glass-panel px-6 py-4 rounded-2xl border <?= $toast_type == 'success' ? 'border-emerald-500/30 text-emerald-400' : 'border-rose-500/30 text-rose-400' ?> text-xs font-bold uppercase tracking-wider shadow-2xl flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full <?= $toast_type == 'success' ? 'bg-emerald-500' : 'bg-rose-500' ?> animate-ping"></span>
+            <span><?= htmlspecialchars($toast_message, ENT_QUOTES) ?></span>
+        </div>
+        <script>setTimeout(() => { const t = document.getElementById('toast-alert'); if(t) { t.style.opacity='0'; setTimeout(()=>t.remove(),500); } }, 3500);</script>
+    <?php endif; ?>
+
     <!-- Header -->
-    <header class="flex justify-between items-center px-6 py-4 bg-white shadow-md">
-        <div class="text-2xl font-bold text-indigo-600">
-            <a href="index.php">Thanh Buy 🛒</a>
-        </div>
-        <div>
-            <ul class="flex gap-6">
-                <li><a href="admin_dashboard.php" class="text-gray-700 hover:text-indigo-600">Admin Home</a></li>
-                <li><a href="view_orders.php" class="text-gray-700 hover:text-indigo-600">View Orders</a></li>
-                <li>
-
-                    <a href="#notifications">
-
-                        🔔 Notifications
-
-                        <?php if ($unread > 0) { ?>
-
-                            <span class="bg-red-600 text-white px-2 rounded-full">
-
-                                <?= $unread ?>
-
-                            </span>
-
-                        <?php } ?>
-
-                    </a>
-
-                </li>
-
-            </ul>
-        </div>
-        <div>
-            <a href="logout.php" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Logout</a>
+    <header class="sticky top-0 z-40 glass-panel border-b border-white/10">
+        <div class="max-w-[96rem] mx-auto px-6 h-20 flex justify-between items-center">
+            <div class="text-base font-black tracking-widest uppercase"><a href="index.php">Thanh Buy <span class="text-indigo-400">Admin</span></a></div>
+            <nav class="hidden md:flex items-center gap-8 font-semibold text-neutral-400 text-xs tracking-widest uppercase">
+                <a href="#products-section" class="hover:text-white transition">Inventory & Sales</a>
+                <a href="#customers-section" class="hover:text-white transition">Customers</a>
+                <a href="#messaging-section" class="hover:text-white transition">Events & Messaging</a>
+                <a href="index.php" class="hover:text-white transition">Storefront</a>
+            </nav>
+            <div><a href="logout.php" class="bg-white/10 border border-white/20 text-white px-5 py-2.5 rounded-full font-bold hover:bg-white hover:text-black transition text-[11px] uppercase tracking-widest">Logout</a></div>
         </div>
     </header>
 
-    <!-- Admin Dashboard Welcome Section -->
-    <div class="container mx-auto p-6 mt-10 bg-white shadow-md rounded-lg max-w-4xl">
-        <h1 class="text-3xl font-semibold text-center mb-6">Welcome, Admin <?php echo htmlspecialchars($user['full_name'], ENT_QUOTES); ?>!</h1>
-        <p class="text-center mb-6">Manage products, view orders, and perform other administrative tasks.</p>
-    </div>
-    <!-- THÊM NOTIFICATION TẠI ĐÂY -->
+    <main class="flex-grow max-w-[96rem] w-full mx-auto px-4 sm:px-6 py-10 space-y-12 relative z-10">
 
-    <div id="notifications"
-        class="container mx-auto p-6 mt-10 bg-white shadow rounded-lg max-w-4xl">
-
-        <h2 class="text-2xl font-bold mb-4">
-
-            Notifications
-
-        </h2>
-
-        <?php
-
-        $result = $conn->query("
-SELECT n.*,u.full_name
-FROM notifications n
-JOIN users u
-ON n.user_id=u.id
-ORDER BY n.created_at DESC
-");
-
-        while ($row = $result->fetch_assoc()) {
-
-        ?>
-
-            <div class="bg-red-100 border-l-4 border-red-600 p-4 mb-3">
-
-                <strong>
-
-                    <?= htmlspecialchars($row['full_name']) ?>
-
-                </strong>
-
-                canceled
-
-                <strong>
-
-                    Order #<?= $row['order_id'] ?>
-
-                </strong>
-
-                <br>
-
-                <small>
-
-                    <?= $row['created_at'] ?>
-
-                </small>
-
+        <!-- Metrics -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="glass-panel p-8 rounded-3xl shadow-2xl flex flex-col justify-center space-y-2">
+                <span class="text-indigo-400 text-[10px] font-extrabold tracking-[0.25em] uppercase">Control Center</span>
+                <h1 class="text-2xl font-extrabold tracking-tight text-white"><?= htmlspecialchars($admin['full_name']) ?></h1>
+                <p class="text-neutral-400 text-xs">Manage inventory sales, announcements & clients.</p>
             </div>
-
-        <?php
-
-        }
-
-        ?>
-    </div>
-
-
-
-    <!-- Product Upload Section -->
-    <div id="products" class="container mx-auto p-6 mt-10 bg-white shadow-md rounded-lg max-w-4xl">
-        <h2 class="text-3xl font-semibold mb-6 text-center">Upload New Product</h2>
-        <form method="POST" enctype="multipart/form-data">
-            <div class="mb-4">
-                <label for="product_name" class="block text-lg font-semibold">Product Name:</label>
-                <input type="text" id="product_name" name="product_name" required class="w-full p-3 border border-gray-300 rounded-md">
+            <div class="glass-panel p-6 rounded-3xl shadow-2xl flex flex-col justify-between border-indigo-500/20">
+                <span class="text-indigo-400 text-[10px] font-extrabold tracking-[0.2em] uppercase">Total Revenue</span>
+                <h3 class="text-3xl font-black font-mono text-white mt-3">$<?= number_format($total_revenue, 2) ?></h3>
             </div>
-
-            <div class="mb-4">
-                <label for="description" class="block text-lg font-semibold">Product Description:</label>
-                <textarea id="description" name="description" required class="w-full p-3 border border-gray-300 rounded-md"></textarea>
+            <div class="glass-panel p-6 rounded-3xl shadow-2xl flex flex-col justify-between">
+                <span class="text-neutral-400 text-[10px] font-extrabold tracking-[0.2em] uppercase">Products</span>
+                <h3 class="text-3xl font-black font-mono text-white mt-3"><?= number_format($total_products) ?></h3>
             </div>
-
-            <div class="mb-4">
-                <label for="price" class="block text-lg font-semibold">Price (USD):</label>
-                <input type="number" id="price" name="price" required class="w-full p-3 border border-gray-300 rounded-md">
+            <div class="glass-panel p-6 rounded-3xl shadow-2xl flex flex-col justify-between">
+                <span class="text-neutral-400 text-[10px] font-extrabold tracking-[0.2em] uppercase">Customers</span>
+                <h3 class="text-3xl font-black font-mono text-white mt-3"><?= number_format($total_users) ?></h3>
             </div>
+        </div>
 
-            <div class="mb-4">
-                <label for="stock" class="block text-lg font-semibold">Stock:</label>
-                <input type="number" id="stock" name="stock" required class="w-full p-3 border border-gray-300 rounded-md">
-            </div>
-
-            <div class="mb-4">
-                <label for="image" class="block text-lg font-semibold">Product Image:</label>
-                <input type="file" id="image" name="image" accept="image/*" required class="w-full p-3 border border-gray-300 rounded-md">
-            </div>
-
-            <button type="submit" name="upload_product" class="bg-indigo-600 text-white px-6 py-3 rounded-md text-lg hover:bg-indigo-700">Upload Product</button>
-        </form>
-    </div>
-    <!--Edit form -->
-    <?php if ($editProduct) { ?>
-
-        <div class="container mx-auto p-6 mt-10 bg-yellow-50 shadow rounded-lg max-w-4xl">
-
-            <h2 class="text-2xl font-bold mb-6">
-
-                Edit Product
-
-            </h2>
-
-            <form method="POST">
-
-                <input
-                    type="hidden"
-                    name="id"
-                    value="<?= $editProduct['id'] ?>">
-
-                <div class="mb-4">
-
-                    <label>Name</label>
-
-                    <input
-                        class="w-full border p-3 rounded"
-                        name="product_name"
-                        value="<?= htmlspecialchars($editProduct['name']) ?>">
-
+        <!-- SECTION 1: PRODUCTS & SALE PRICES -->
+        <div id="products-section" class="glass-panel p-6 sm:p-8 rounded-3xl shadow-2xl space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-base font-extrabold uppercase tracking-widest text-white">Inventory & Special Sales</h2>
+                    <p class="text-neutral-400 text-xs mt-1">Set original price and promotional sale price for vehicles.</p>
                 </div>
+                <button onclick="openAddProductModal()" class="bg-white text-black px-5 py-3 rounded-2xl font-extrabold text-xs uppercase tracking-wider hover:bg-indigo-500 hover:text-white transition">+ Add Product / Sale</button>
+            </div>
 
-                <div class="mb-4">
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-white/10 text-neutral-400 text-[11px] uppercase tracking-widest font-bold">
+                            <th class="px-4 py-3.5">ID</th>
+                            <th class="px-4 py-3.5">Image</th>
+                            <th class="px-4 py-3.5">Name</th>
+                            <th class="px-4 py-3.5 text-right">Pricing (Regular / Sale)</th>
+                            <th class="px-4 py-3.5 text-center">Stock</th>
+                            <th class="px-4 py-3.5 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5 text-xs">
+                        <?php
+                        $prod_res = $conn->query("SELECT * FROM products ORDER BY id DESC");
+                        while ($prod = $prod_res->fetch_assoc()) {
+                            $has_sale = !is_null($prod['sale_price']) && $prod['sale_price'] < $prod['price'];
+                            $price_display = $has_sale 
+                                ? '<div class="line-through text-neutral-500 text-[10px]">$' . number_format($prod['price'], 2) . '</div><div class="text-rose-400 font-mono font-bold">$' . number_format($prod['sale_price'], 2) . ' <span class="bg-rose-500/20 text-rose-300 text-[9px] px-1.5 py-0.5 rounded ml-1">SALE</span></div>'
+                                : '<div class="text-indigo-400 font-mono font-bold">$' . number_format($prod['price'], 2) . '</div>';
 
-                    <label>Description</label>
+                            echo '
+                                <tr class="hover:bg-white/[0.02] transition">
+                                    <td class="px-4 py-4 font-mono font-bold">#' . $prod['id'] . '</td>
+                                    <td class="px-4 py-4"><img src="' . htmlspecialchars($prod['image']) . '" class="w-10 h-10 object-cover rounded-xl border border-white/10"></td>
+                                    <td class="px-4 py-4 font-bold text-white">' . htmlspecialchars($prod['name']) . '</td>
+                                    <td class="px-4 py-4 text-right">' . $price_display . '</td>
+                                    <td class="px-4 py-4 text-center font-mono">' . $prod['stock'] . '</td>
+                                    <td class="px-4 py-4 text-center space-x-2">
+                                        <button onclick="openEditProductModal(\'' . $prod['id'] . '\', \'' . addslashes($prod['name']) . '\', \'' . addslashes($prod['description']) . '\', \'' . $prod['price'] . '\', \'' . ($prod['sale_price'] ?? '') . '\', \'' . $prod['stock'] . '\')" class="bg-white/10 hover:bg-white hover:text-black text-white px-3 py-2 rounded-xl font-bold text-[10px] uppercase transition">Edit</button>
+                                        <a href="admin_dashboard.php?delete_product=' . $prod['id'] . '" onclick="return confirm(\'Delete this product?\')" class="bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white px-3 py-2 rounded-xl font-bold text-[10px] uppercase transition">Delete</a>
+                                    </td>
+                                </tr>';
+                        }
+                        ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-                    <textarea
-                        class="w-full border p-3 rounded"
-                        name="description"><?= htmlspecialchars($editProduct['description']) ?></textarea>
+        <!-- SECTION 2: CUSTOMERS -->
+        <div id="customers-section" class="glass-panel p-6 sm:p-8 rounded-3xl shadow-2xl space-y-6">
+            <h2 class="text-base font-extrabold uppercase tracking-widest text-white">Registered Customers</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-white/10 text-neutral-400 text-[11px] uppercase tracking-widest font-bold">
+                            <th class="px-4 py-3.5">ID</th>
+                            <th class="px-4 py-3.5">Name</th>
+                            <th class="px-4 py-3.5">Email</th>
+                            <th class="px-4 py-3.5">Role</th>
+                            <th class="px-4 py-3.5 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5 text-xs">
+                        <?php
+                        $cust_res = $conn->query("SELECT * FROM users ORDER BY id DESC");
+                        while ($cust = $cust_res->fetch_assoc()) {
+                            echo '
+                                <tr class="hover:bg-white/[0.02] transition">
+                                    <td class="px-4 py-4 font-mono">#' . $cust['id'] . '</td>
+                                    <td class="px-4 py-4 font-bold text-white">' . htmlspecialchars($cust['full_name']) . '</td>
+                                    <td class="px-4 py-4 text-neutral-300">' . htmlspecialchars($cust['email']) . '</td>
+                                    <td class="px-4 py-4"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ' . ($cust['role']=='admin'?'bg-indigo-500/20 text-indigo-400':'bg-white/5 text-neutral-400') . '">' . $cust['role'] . '</span></td>
+                                    <td class="px-4 py-4 text-center space-x-2">
+                                        <button onclick="openEditModal(\'' . $cust['id'] . '\', \'' . addslashes($cust['full_name']) . '\', \'' . addslashes($cust['email']) . '\', \'' . addslashes($cust['phone']) . '\', \'' . addslashes($cust['address']) . '\', \'' . $cust['role'] . '\')" class="bg-white/10 hover:bg-white hover:text-black text-white px-3 py-2 rounded-xl text-[10px] font-bold uppercase transition">Edit</button>
+                                        <a href="admin_dashboard.php?delete_customer=' . $cust['id'] . '" onclick="return confirm(\'Delete this customer?\')" class="bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white px-3 py-2 rounded-xl text-[10px] font-bold uppercase transition">Delete</a>
+                                    </td>
+                                </tr>';
+                        }
+                        ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
+        <!-- SECTION 3: ADMIN EVENT MESSAGING & CHAT CENTER -->
+        <div id="messaging-section" class="glass-panel p-6 sm:p-8 rounded-3xl shadow-2xl space-y-6">
+            <div>
+                <h2 class="text-base font-extrabold uppercase tracking-widest text-white">Event Broadcasts & Customer Messages</h2>
+                <p class="text-neutral-400 text-xs mt-1">Send event notifications, discount announcements, or reply directly to client inquiries.</p>
+            </div>
+
+            <form method="POST" action="" class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-black/40 p-6 rounded-2xl border border-white/5">
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Target Recipient</label>
+                    <select name="target_user" class="w-full px-4 py-3 bg-black/60 border border-white/10 rounded-xl text-white text-xs focus:outline-none">
+                        <option value="0">📢 Broadcast to ALL Customers (Events / Sales)</option>
+                        <?php
+                        $u_list = $conn->query("SELECT id, full_name, email FROM users WHERE role != 'admin'");
+                        while ($u = $u_list->fetch_assoc()) {
+                            echo '<option value="' . $u['id'] . '">User: ' . htmlspecialchars($u['full_name']) . ' (' . $u['email'] . ')</option>';
+                        }
+                        ?>
+                    </select>
                 </div>
-
-                <div class="mb-4">
-
-                    <label>Price</label>
-
-                    <input
-                        type="number"
-                        step="0.01"
-                        class="w-full border p-3 rounded"
-                        name="price"
-                        value="<?= $editProduct['price'] ?>">
-
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Subject / Event Title</label>
+                    <input type="text" name="subject" placeholder="e.g. Special Holiday Mega Sale!" required class="w-full px-4 py-3 bg-black/60 border border-white/10 rounded-xl text-white text-xs focus:outline-none">
                 </div>
-
-                <div class="mb-4">
-
-                    <label>Stock</label>
-
-                    <input
-                        type="number"
-                        class="w-full border p-3 rounded"
-                        name="stock"
-                        value="<?= $editProduct['stock'] ?>">
-
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Action</label>
+                    <button type="submit" name="send_broadcast" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold py-3 rounded-xl uppercase text-xs tracking-wider transition">Send Message</button>
                 </div>
-
-                <button
-                    name="update_product"
-                    class="bg-green-600 text-white px-6 py-3 rounded">
-
-                    Update Product
-
-                </button>
-
+                <div class="md:col-span-3">
+                    <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Message Content</label>
+                    <textarea name="message" rows="3" placeholder="Write your event announcement or reply here..." required class="w-full px-4 py-3 bg-black/60 border border-white/10 rounded-xl text-white text-xs focus:outline-none resize-none"></textarea>
+                </div>
             </form>
 
+            <!-- Message Log / History -->
+            <div class="space-y-3 pt-4">
+                <h3 class="text-xs font-bold uppercase tracking-widest text-neutral-400">Recent Messages Sent & Received</h3>
+                <div class="space-y-2 max-h-64 overflow-y-auto pr-2">
+                    <?php
+                    $msg_res = $conn->query("SELECT m.*, u.full_name as sender_name FROM messages m JOIN users u ON m.sender_id = u.id ORDER BY m.id DESC LIMIT 10");
+                    if ($msg_res && $msg_res->num_rows > 0) {
+                        while ($msg = $msg_res->fetch_assoc()) {
+                            echo '
+                            <div class="bg-white/[0.02] p-4 rounded-xl border border-white/5 text-xs space-y-1">
+                                <div class="flex justify-between text-neutral-400 text-[10px]">
+                                    <span class="font-bold text-white">From: ' . htmlspecialchars($msg['sender_name']) . ' &rarr; To ID: #' . $msg['receiver_id'] . '</span>
+                                    <span>' . $msg['created_at'] . '</span>
+                                </div>
+                                <div class="font-bold text-indigo-300">' . htmlspecialchars($msg['subject'] ?? 'Direct Message') . '</div>
+                                <div class="text-neutral-300">' . nl2br(htmlspecialchars($msg['message'])) . '</div>
+                            </div>';
+                        }
+                    } else {
+                        echo '<p class="text-neutral-500 text-xs">No messages recorded yet.</p>';
+                    }
+                    ?>
+                </div>
+            </div>
         </div>
 
-    <?php } ?>
+    </main>
 
-
-    <!-- Manage Products Section -->
-    <div id="products" class="container mx-auto p-6 mt-10 bg-white shadow-md rounded-lg max-w-4xl">
-        <h2 class="text-3xl font-semibold mb-6 text-center">Manage Products</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-            <?php
-            // Fetch products from the database
-            $sql = "SELECT * FROM products";
-            $result = $conn->query($sql);
-
-            if ($result->num_rows > 0) {
-                while ($row = $result->fetch_assoc()) {
-                    echo '
-                        <div class="bg-white shadow-md rounded-lg overflow-hidden text-center">
-                             <!-- Fixed image size with object-cover to maintain aspect ratio -->
-                             <img src="' . $row['image'] . '" alt="' . htmlspecialchars($row['name'], ENT_QUOTES) . '" class="w-full h-48 object-cover">
-                            <h3 class="text-lg font-semibold">' . htmlspecialchars($row['name'], ENT_QUOTES) . '</h3>
-                            <p class="text-indigo-600 font-bold">' . number_format($row['price'], 2) . ' USD</p>
-                            <div class="p-3">
-                                <!-- Delete button -->
-                                <a href="admin_dashboard.php?delete_id=' . $row['id'] . '" class="bg-red-600 text-white px-6 py-2 rounded-md text-lg hover:bg-red-700">Delete</a>
-                            </div>
-                            <div class="p-3">
-                                <a href="admin_dashboard.php?edit_id=' . $row['id'] . '" class="bg-red-600 text-white px-6 py-2 rounded-md text-lg hover:bg-red-700">Edit</a>
-                            </div>
-                        </div>
-                    ';
-                }
-            } else {
-                echo "<p class='text-gray-600'>No products found!</p>";
-            }
-            ?>
+    <!-- ADD PRODUCT MODAL -->
+    <div id="addProductModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl shadow-2xl max-w-md w-full border border-white/10 space-y-6">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-extrabold uppercase tracking-widest text-white">Add Product & Sale</h3>
+                <button onclick="closeAddProductModal()" class="text-neutral-400 hover:text-white">✕</button>
+            </div>
+            <form method="POST" action="" enctype="multipart/form-data" class="space-y-4">
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Product Name</label>
+                    <input type="text" name="name" required class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white text-xs">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Description</label>
+                    <textarea name="description" rows="2" required class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white text-xs resize-none"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Regular Price ($)</label>
+                        <input type="number" step="0.01" name="price" required class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Sale Price (Optional)</label>
+                        <input type="number" step="0.01" name="sale_price" placeholder="Leave empty if no sale" class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white text-xs">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Stock</label>
+                        <input type="number" name="stock" required class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Image</label>
+                        <input type="file" name="image" accept="image/*" class="w-full text-xs text-neutral-400 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:bg-white/10 file:text-white">
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeAddProductModal()" class="w-1/2 bg-white/10 text-white py-3 rounded-xl text-xs uppercase font-bold">Cancel</button>
+                    <button type="submit" name="add_product" class="w-1/2 bg-white text-black py-3 rounded-xl text-xs uppercase font-bold hover:bg-indigo-500 hover:text-white">Save</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <footer class="text-center py-6 bg-gray-200 text-gray-600">
-        <p>&copy; 2026 Thanh Buy 🛒 | All Rights Reserved</p>
-    </footer>
+    <!-- EDIT PRODUCT MODAL -->
+    <div id="editProductModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl shadow-2xl max-w-md w-full border border-white/10 space-y-6">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-extrabold uppercase tracking-widest text-white">Edit Product & Sale</h3>
+                <button onclick="closeEditProductModal()" class="text-neutral-400 hover:text-white">✕</button>
+            </div>
+            <form method="POST" action="" enctype="multipart/form-data" class="space-y-4">
+                <input type="hidden" name="product_id" id="edit_prod_id">
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Product Name</label>
+                    <input type="text" name="name" id="edit_prod_name" required class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white text-xs">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Description</label>
+                    <textarea name="description" id="edit_prod_desc" rows="2" required class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white text-xs resize-none"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Regular Price ($)</label>
+                        <input type="number" step="0.01" name="price" id="edit_prod_price" required class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Sale Price</label>
+                        <input type="number" step="0.01" name="sale_price" id="edit_prod_sale_price" placeholder="Optional" class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white text-xs">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Stock</label>
+                    <input type="number" name="stock" id="edit_prod_stock" required class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white text-xs">
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeEditProductModal()" class="w-1/2 bg-white/10 text-white py-3 rounded-xl text-xs uppercase font-bold">Cancel</button>
+                    <button type="submit" name="update_product" class="w-1/2 bg-white text-black py-3 rounded-xl text-xs uppercase font-bold hover:bg-indigo-500 hover:text-white">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
+    <!-- EDIT CUSTOMER MODAL -->
+    <div id="editModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl shadow-2xl max-w-md w-full border border-white/10 space-y-6">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-extrabold uppercase tracking-widest text-white">Edit Customer</h3>
+                <button onclick="closeEditModal()" class="text-neutral-400 hover:text-white">✕</button>
+            </div>
+            <form method="POST" action="" class="space-y-4">
+                <input type="hidden" name="customer_id" id="edit_customer_id">
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Full Name</label>
+                    <input type="text" name="full_name" id="edit_full_name" required class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white text-xs">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Email</label>
+                    <input type="email" name="email" id="edit_email" required class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white text-xs">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Phone</label>
+                    <input type="text" name="phone" id="edit_phone" class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white text-xs">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Address</label>
+                    <input type="text" name="address" id="edit_address" class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white text-xs">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Role</label>
+                    <select name="role" id="edit_role" class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white text-xs">
+                        <option value="user" class="bg-neutral-900">User</option>
+                        <option value="admin" class="bg-neutral-900">Admin</option>
+                    </select>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeEditModal()" class="w-1/2 bg-white/10 text-white py-3 rounded-xl text-xs uppercase font-bold">Cancel</button>
+                    <button type="submit" name="update_customer" class="w-1/2 bg-white text-black py-3 rounded-xl text-xs uppercase font-bold hover:bg-indigo-500 hover:text-white">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openAddProductModal() { document.getElementById('addProductModal').classList.remove('hidden'); }
+        function closeAddProductModal() { document.getElementById('addProductModal').classList.add('hidden'); }
+        function openEditProductModal(id, name, desc, price, salePrice, stock) {
+            document.getElementById('edit_prod_id').value = id;
+            document.getElementById('edit_prod_name').value = name;
+            document.getElementById('edit_prod_desc').value = desc;
+            document.getElementById('edit_prod_price').value = price;
+            document.getElementById('edit_prod_sale_price').value = salePrice;
+            document.getElementById('edit_prod_stock').value = stock;
+            document.getElementById('editProductModal').classList.remove('hidden');
+        }
+        function closeEditProductModal() { document.getElementById('editProductModal').classList.add('hidden'); }
+        function openEditModal(id, name, email, phone, address, role) {
+            document.getElementById('edit_customer_id').value = id;
+            document.getElementById('edit_full_name').value = name;
+            document.getElementById('edit_email').value = email;
+            document.getElementById('edit_phone').value = phone;
+            document.getElementById('edit_address').value = address;
+            document.getElementById('edit_role').value = role;
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+        function closeEditModal() { document.getElementById('editModal').classList.add('hidden'); }
+    </script>
 </body>
-
 </html>
